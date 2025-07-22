@@ -1,10 +1,9 @@
 import feedparser
 import os
-import re
 from bs4 import BeautifulSoup
 from telegram import Bot
 
-# Configura
+# Configurazione
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -13,27 +12,21 @@ CHAT_ID = os.getenv("CHAT_ID")
 feed = feedparser.parse(RSS_URL)
 entry = feed.entries[0]
 
-# Estrai testo e ripulisci HTML
+# Parse HTML description
 soup = BeautifulSoup(entry.description, "html.parser")
-text = soup.get_text(separator="\n").strip()
+paragraphs = soup.find_all("p", style="text-align: justify;")
 
-# Cerchiamo la sezione Vangelo e Commento
-vangelo_match = re.search(r"Dal Vangelo.*?(?=\n\n|$)", text, re.DOTALL)
-commento_match = re.search(r"Maria Maddalena.*", text, re.DOTALL)  # Pattern molto fragile, possiamo migliorarlo!
-
-# Fall-back: se non matcha nulla, manda tutto come messaggio unico
-if vangelo_match:
-    vangelo_text = vangelo_match.group(0)
+# Estrarre sezioni desiderate
+if len(paragraphs) >= 3:
+    # Ignora prima lettura (primo <p>)
+    vangelo = paragraphs[1].get_text(separator="\n").strip()
+    commento = paragraphs[2].get_text(separator="\n").strip()
 else:
-    vangelo_text = "⚠️ Vangelo non trovato nel testo."
+    vangelo = "⚠️ Vangelo non trovato."
+    commento = "⚠️ Commento non trovato."
 
-if commento_match:
-    commento_text = commento_match.group(0)
-else:
-    commento_text = "⚠️ Commento non trovato nel testo."
-
-# Invia su Telegram
+# Invia messaggi
 bot = Bot(token=TOKEN)
 
-bot.send_message(chat_id=CHAT_ID, text=f"📖 *Vangelo del giorno*\n\n{vangelo_text}", parse_mode='Markdown')
-bot.send_message(chat_id=CHAT_ID, text=f"📝 *Commento al Vangelo*\n\n{commento_text}", parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=f"📖 *Vangelo del giorno*\n\n{vangelo}", parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=f"📝 *Commento al Vangelo*\n\n{commento}", parse_mode='Markdown')
