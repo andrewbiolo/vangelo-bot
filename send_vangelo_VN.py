@@ -1,9 +1,9 @@
-import argparse
-import datetime
-import feedparser
-import telegram
 import html
 import os
+from bs4 import BeautifulSoup
+from telegram import Bot
+from datetime import datetime
+import argparse
 
 # === CONFIG ===
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
