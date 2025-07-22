@@ -1,6 +1,7 @@
 name: Test Schedule Only
 
 on:
+  workflow_dispatch:
   schedule:
     - cron: '*/5 * * * *'
 
