@@ -2,7 +2,7 @@ name: Vangelo Bot
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Ogni giorno alle 13:50 UTC (15:50 italiane)
+    - cron: '5 * * * *'  # Ogni giorno alle 13:50 UTC (15:50 italiane)
 
 jobs:
   test:
