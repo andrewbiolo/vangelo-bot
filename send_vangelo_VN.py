@@ -1,84 +1,93 @@
+import datetime as dt
+import argparse
+import feedparser
+import telegram
 import html
 import os
 from bs4 import BeautifulSoup
-from telegram import Bot
-from datetime import datetime
-import argparse
 
-# === CONFIG ===
-RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
-TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
-
-# === ARG PARSING ===
-parser = argparse.ArgumentParser(description="Invia vangelo e commento su Telegram.")
-parser.add_argument("--day", type=str, help="Data da selezionare (formato YYYY-MM-DD)")
+# Parametri da linea di comando
+parser = argparse.ArgumentParser(description="Invia il vangelo del giorno su Telegram.")
+parser.add_argument("--day", help="Data in formato YYYY-MM-DD", required=False)
 args = parser.parse_args()
 
-# === DATA SELEZIONATA ===
+# Determina la data
 if args.day:
     try:
-        selected_date = datetime.datetime.strptime(args.day, "%Y-%m-%d").date()
+        selected_date = dt.datetime.strptime(args.day, "%Y-%m-%d").date()
     except ValueError:
         print(f"⚠️ Data non valida: {args.day}. Usa formato YYYY-MM-DD.")
         exit(1)
 else:
-    selected_date = datetime.date.today()
+    selected_date = dt.date.today()
 
-# === PARSE RSS ===
-feed = feedparser.parse(RSS_URL)
+selected_date_str = selected_date.strftime("%d %B %Y")
 
-vangelo_entry = None
+# Leggi variabili d'ambiente
+telegram_token = os.getenv("TELEGRAM_TOKEN")
+telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID")
+
+if not telegram_token or not telegram_chat_id:
+    print("⚠️ TELEGRAM_TOKEN o TELEGRAM_CHAT_ID non impostati.")
+    exit(1)
+
+bot = telegram.Bot(token=telegram_token)
+
+# Leggi feed RSS
+url = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
+feed = feedparser.parse(url)
+
+# Cerca l'item corretto
+found = False
 for entry in feed.entries:
-    if hasattr(entry, "published_parsed"):
-        entry_date = datetime.date(*entry.published_parsed[:3])
-        if entry_date == selected_date:
-            vangelo_entry = entry
-            break
+    pub_date = dt.datetime(*entry.published_parsed[:6]).date()
+    if pub_date == selected_date:
+        found = True
+        description_html = entry.description
+        break
 
-if not vangelo_entry:
-    print(f"⚠️ Nessun Vangelo trovato per {selected_date.strftime('%d %B %Y')}")
+if not found:
+    print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# === ESTRAGGO DESCRIZIONE HTML ===
-description = vangelo_entry.description
+# Parsing contenuto
+soup = BeautifulSoup(description_html, "html.parser")
+paragraphs = soup.find_all("p", style="text-align: justify;")
 
-# === PARSING SEZIONI ===
-# Trova inizio sezione <p style="text-align: justify;"><i>Dal Vangelo
-start_vangelo = description.find('<p style="text-align: justify;"><i>Dal Vangelo')
-if start_vangelo == -1:
-    print("⚠️ Sezione Vangelo non trovata nel contenuto HTML.")
+# Trova indice Vangelo
+idx_vangelo = None
+for i, p in enumerate(paragraphs):
+    if "Dal Vangelo" in p.get_text():
+        idx_vangelo = i
+        break
+
+if idx_vangelo is None:
+    print("⚠️ Sezione Vangelo non trovata.")
     exit(1)
 
-# Estraggo solo da quel punto in poi
-content = description[start_vangelo:]
+# Estrai sezioni
+vangelo_parts = []
+for j in range(idx_vangelo, len(paragraphs)):
+    txt = paragraphs[j].get_text(strip=True)
+    if j > idx_vangelo and txt.startswith("Maria") or txt.startswith("Marta"):
+        break
+    vangelo_parts.append(txt)
 
-# Split per separare vangelo dal commento finale
-separator = '<p style="text-align: justify;">'
-parts = content.split(separator, 1)
-vangelo_html = parts[0]
-commento_html = parts[1] if len(parts) > 1 else ""
+vangelo_text = "\n".join(vangelo_parts)
 
-# Pulizia HTML → testo semplice
-from bs4 import BeautifulSoup
+# Commento (dopo l'ultimo paragrafo Vangelo)
+commento_parts = []
+for k in range(j, len(paragraphs)):
+    commento_parts.append(paragraphs[k].get_text(strip=True))
 
-vangelo_text = BeautifulSoup(vangelo_html, "html.parser").get_text(separator="\n").strip()
-commento_text = BeautifulSoup(commento_html, "html.parser").get_text(separator="\n").strip()
+commento_text = "\n".join(commento_parts)
 
-# Decodifica eventuali entità HTML (&egrave;, ecc.)
-vangelo_text = html.unescape(vangelo_text)
-commento_text = html.unescape(commento_text)
+# Messaggi
+msg1 = f"📖 *Vangelo del giorno* ({selected_date_str}):\n\n{vangelo_text}"
+msg2 = f"💬 *Riflessione dei Papi*:\n\n{commento_text}"
 
-# === FORMATTING MESSAGGI ===
-date_str = selected_date.strftime("%A %d %B %Y").capitalize()
+# Invia
+bot.send_message(chat_id=telegram_chat_id, text=msg1, parse_mode=telegram.constants.ParseMode.MARKDOWN)
+bot.send_message(chat_id=telegram_chat_id, text=msg2, parse_mode=telegram.constants.ParseMode.MARKDOWN)
 
-msg1 = f"📖 *Vangelo del giorno - {date_str}*\n\n{vangelo_text}"
-msg2 = f"💬 *Commento*\n\n{commento_text}"
-
-# === TELEGRAM SEND ===
-bot = telegram.Bot(token=TELEGRAM_TOKEN)
-
-bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=msg1, parse_mode=telegram.constants.ParseMode.MARKDOWN)
-bot.send_message(chat_id=TELEGRAM_CHAT_ID, text=msg2, parse_mode=telegram.constants.ParseMode.MARKDOWN)
-
-print(f"✅ Vangelo del {date_str} inviato con successo.")
+print("✅ Vangelo inviato correttamente.")
