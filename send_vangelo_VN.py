@@ -18,7 +18,7 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.today().date()
+    selected_date = datetime.utcnow().date()  # ⚠️ UTC!
 
 selected_date_str = selected_date.strftime("%d %B %Y")
 
@@ -27,8 +27,7 @@ feed = feedparser.parse(RSS_URL)
 entry = None
 
 for e in feed.entries:
-    # Parse pubDate in formato RFC822
-    entry_date = datetime(*e.published_parsed[:6]).date()
+    entry_date = datetime(*e.published_parsed[:6]).date()  # published_parsed è UTC
     if entry_date == selected_date:
         entry = e
         break
