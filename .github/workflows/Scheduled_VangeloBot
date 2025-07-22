@@ -1,0 +1,40 @@
+name: Vangelo Bot
+
+on:
+  schedule:
+    # Esegue ogni giorno alle 04:00 UTC (06:00 italiane)
+    - cron: '24 13 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Data da usare (YYYY-MM-DD)'
+        required: false
+
+jobs:
+  vangelo:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: 3.12
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run vangelo-bot
+        run: |
+          if [ -n "${{ github.event.inputs.date }}" ]; then
+            echo "Running with date: ${{ github.event.inputs.date }}"
+            python send_vangelo_VN.py --date "${{ github.event.inputs.date }}"
+          else
+            echo "Running with default date (oggi)"
+            python send_vangelo_VN.py
+          fi
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          CHAT_ID: ${{ secrets.CHAT_ID }}
