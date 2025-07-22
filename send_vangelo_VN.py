@@ -4,51 +4,37 @@ from bs4 import BeautifulSoup
 from telegram import Bot
 from datetime import datetime
 import argparse
+import pytz
 
 # Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Italian months map
-ITALIAN_MONTHS = {
-    1: "gennaio",
-    2: "febbraio",
-    3: "marzo",
-    4: "aprile",
-    5: "maggio",
-    6: "giugno",
-    7: "luglio",
-    8: "agosto",
-    9: "settembre",
-    10: "ottobre",
-    11: "novembre",
-    12: "dicembre"
-}
-
 # Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
 
+rome = pytz.timezone("Europe/Rome")
+
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.today().date()
+    selected_date = datetime.now(rome).date()
 
-day = selected_date.day
-month = ITALIAN_MONTHS[selected_date.month]
-year = selected_date.year
-selected_date_str = f"{day} {month} {year}"
+selected_date_str = selected_date.strftime("%d %B %Y")
 
 # Parse feed
 feed = feedparser.parse(RSS_URL)
 entry = None
 
 for e in feed.entries:
-    if f"{day} {month} {year}" in e.title.lower():
-        entry = e
-        break
+    if hasattr(e, "published_parsed"):
+        pub_date = datetime(*e.published_parsed[:6]).date()
+        if pub_date == selected_date:
+            entry = e
+            break
 
 if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
