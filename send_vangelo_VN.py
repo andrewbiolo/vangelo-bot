@@ -10,6 +10,22 @@ RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+# Italian months map
+ITALIAN_MONTHS = {
+    1: "gennaio",
+    2: "febbraio",
+    3: "marzo",
+    4: "aprile",
+    5: "maggio",
+    6: "giugno",
+    7: "luglio",
+    8: "agosto",
+    9: "settembre",
+    10: "ottobre",
+    11: "novembre",
+    12: "dicembre"
+}
+
 # Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
@@ -18,17 +34,19 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()  # ⚠️ UTC!
+    selected_date = datetime.today().date()
 
-selected_date_str = selected_date.strftime("%d %B %Y")
+day = selected_date.day
+month = ITALIAN_MONTHS[selected_date.month]
+year = selected_date.year
+selected_date_str = f"{day} {month} {year}"
 
 # Parse feed
 feed = feedparser.parse(RSS_URL)
 entry = None
 
 for e in feed.entries:
-    entry_date = datetime(*e.published_parsed[:6]).date()  # published_parsed è UTC
-    if entry_date == selected_date:
+    if f"{day} {month} {year}" in e.title.lower():
         entry = e
         break
 
