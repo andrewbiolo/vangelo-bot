@@ -3,7 +3,7 @@ name: Vangelo Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: '*/10 * * * *'  # Ogni giorno alle 13:50 UTC (15:50 italiane)
+    - cron: 41 * * * * 
 
 jobs:
   test:
