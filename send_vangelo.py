@@ -2,25 +2,31 @@ import feedparser
 import os
 from telegram import Bot
 
-# Configura parametri da variabili ambiente (gestiti come Secrets su GitHub)
-RSS_URL = "https://www.chiesacattolica.it/feed/vangelo-del-giorno/"
+# Configura parametri
+RSS_URL = "https://rss.evangelizo.org/rss/v2/evangelizo_rss-it.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Recupera e parse feed RSS
+# Leggi RSS
 feed = feedparser.parse(RSS_URL)
-entry = feed.entries[0]
 
-# Estrarre titolo e summary
-vangelo_title = entry.title
-vangelo_summary = entry.summary  # contiene HTML <p>...</p>
+# Filtra solo item con category 'EVANGELIUM'
+vangelo_entry = None
+for entry in feed.entries:
+    if hasattr(entry, 'category') and entry.category == 'EVANGELIUM':
+        vangelo_entry = entry
+        break
 
-# Pulire il testo (opzionale)
-vangelo_clean = vangelo_summary.replace('<p>', '').replace('</p>', '').strip()
+if vangelo_entry:
+    # Pulisce il testo rimuovendo CDATA automatico di feedparser
+    vangelo_title = vangelo_entry.title
+    vangelo_summary = vangelo_entry.description.strip()
 
-# Formattazione messaggio Telegram
-message = f"📖 *{vangelo_title}*\n\n{vangelo_clean}"
+    # Crea messaggio formattato
+    message = f"📖 *{vangelo_title}*\n\n{vangelo_summary}"
 
-# Invia il messaggio
-bot = Bot(token=TOKEN)
-bot.send_message(chat_id=CHAT_ID, text=message, parse_mode='Markdown')
+    # Invia su Telegram
+    bot = Bot(token=TOKEN)
+    bot.send_message(chat_id=CHAT_ID, text=message, parse_mode='Markdown')
+else:
+    print("⚠️ Nessun vangelo trovato per oggi nel feed.")
