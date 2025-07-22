@@ -4,35 +4,49 @@ from bs4 import BeautifulSoup
 from telegram import Bot
 from datetime import datetime
 import argparse
-import locale
-
-# Imposta locale italiano per month names
-locale.setlocale(locale.LC_TIME, 'it_IT.UTF-8')
 
 # Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Argomenti
+# Italian months map
+ITALIAN_MONTHS = {
+    1: "gennaio",
+    2: "febbraio",
+    3: "marzo",
+    4: "aprile",
+    5: "maggio",
+    6: "giugno",
+    7: "luglio",
+    8: "agosto",
+    9: "settembre",
+    10: "ottobre",
+    11: "novembre",
+    12: "dicembre"
+}
+
+# Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
 
-# Data selezionata
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
     selected_date = datetime.today().date()
 
-selected_date_str = selected_date.strftime("%-d %B %Y")
+day = selected_date.day
+month = ITALIAN_MONTHS[selected_date.month]
+year = selected_date.year
+selected_date_str = f"{day} {month} {year}"
 
-# Feed parsing
+# Parse feed
 feed = feedparser.parse(RSS_URL)
-
 entry = None
+
 for e in feed.entries:
-    if selected_date.strftime("%-d %B %Y").lower() in e.title.lower():
+    if f"{day} {month} {year}" in e.title.lower():
         entry = e
         break
 
@@ -40,14 +54,14 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Parsing HTML
+# Parse HTML
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
 vangelo_text = ""
 commento_text = ""
-
 found_vangelo = False
+
 for idx, p in enumerate(paragraphs):
     text = p.get_text(separator="\n").strip()
     if not found_vangelo and text.startswith("Dal Vangelo"):
