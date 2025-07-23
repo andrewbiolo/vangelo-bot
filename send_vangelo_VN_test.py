@@ -1,23 +1,33 @@
 import feedparser
 import os
-import argparse
 from bs4 import BeautifulSoup
 from telegram import Bot
 from datetime import datetime
+import argparse
+import re
 
 # Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Italian months map
+# Mappa mesi italiani
 ITALIAN_MONTHS = {
-    1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile",
-    5: "maggio", 6: "giugno", 7: "luglio", 8: "agosto",
-    9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
+    1: "gennaio",
+    2: "febbraio",
+    3: "marzo",
+    4: "aprile",
+    5: "maggio",
+    6: "giugno",
+    7: "luglio",
+    8: "agosto",
+    9: "settembre",
+    10: "ottobre",
+    11: "novembre",
+    12: "dicembre"
 }
 
-# Args
+# Argumenti opzionali
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -25,7 +35,7 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()  # attenzione: UTC!
+    selected_date = datetime.today().date()
 
 day = selected_date.day
 month = ITALIAN_MONTHS[selected_date.month]
@@ -45,7 +55,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Estrai contenuto
+# Parsing HTML
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -62,46 +72,45 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# --- FORMATTAZIONE TESTI ---
+# --- FORMATTAZIONE ---
 
-def formatta_testo(text):
-    # Evidenzia citazioni tra virgolette in grassetto
-    import re
+def evidenzia_dialoghi(text):
     text = re.sub(r'(“[^”]+”)', r'*\1*', text)
     text = re.sub(r'("([^"]+)")', r'*\1*', text)
     text = re.sub(r'(«[^»]+»)', r'*\1*', text)
-    # Spazi tra paragrafi
-    text = re.sub(r'\n+', '\n\n', text.strip())
     return text
 
-# Format titolo vangelo in corsivo
-vangelo_righe = vangelo_text.split('\n')
-if len(vangelo_righe) > 1:
-    titolo = f"_{vangelo_righe[0].strip()}_"
-    corpo = '\n'.join(vangelo_righe[1:]).strip()
-    vangelo_text = f"{titolo}\n\n{corpo}"
+def corsivo_parentesi(text):
+    return re.sub(r'\(([^)]+)\)', r'_(_\1_)_', text)
 
-vangelo_text = formatta_testo(vangelo_text)
-commento_text = formatta_testo(commento_text)
+def formatta_paragrafi(text):
+    return re.sub(r'\n{2,}', '\n\n', text.strip())
 
-# Invio messaggi
+vangelo_text = evidenzia_dialoghi(vangelo_text)
+vangelo_text = corsivo_parentesi(vangelo_text)
+vangelo_text = formatta_paragrafi(vangelo_text)
+
+commento_text = evidenzia_dialoghi(commento_text)
+commento_text = corsivo_parentesi(commento_text)
+commento_text = formatta_paragrafi(commento_text)
+
+# --- INVIO MESSAGGI TELEGRAM ---
 bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 *Vangelo del giorno ({selected_date_str})*\n\n{vangelo_text}",
+    text=f"📖 *Vangelo del giorno ({selected_date_str})* 🕊️\n\n_{vangelo_text}_",
     parse_mode='Markdown'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 *Commento al Vangelo*\n\n{commento_text}",
+    text=f"📝 *Commento al Vangelo* ✍️\n\n{commento_text}",
     parse_mode='Markdown'
 )
 
-# Link di approfondimento
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})",
+    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})\n\n🌱 Buona giornata e buona meditazione! ✨",
     parse_mode='Markdown'
 )
