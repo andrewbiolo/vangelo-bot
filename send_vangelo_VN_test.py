@@ -2,6 +2,7 @@ import feedparser
 import os
 from bs4 import BeautifulSoup
 from telegram import Bot
+from telegram.constants import ParseMode
 from datetime import datetime
 import argparse
 import re
@@ -17,6 +18,13 @@ ITALIAN_MONTHS = {
     5: "maggio", 6: "giugno", 7: "luglio", 8: "agosto",
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
+
+# Escape per MarkdownV2
+def escape_markdown(text):
+    escape_chars = r"_*[]()~`>#+-=|{}.!\\"
+    for ch in escape_chars:
+        text = text.replace(ch, f"\\{ch}")
+    return text
 
 # Args
 parser = argparse.ArgumentParser()
@@ -63,30 +71,38 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# Formatting vangelo
+# Formatting Vangelo
 vangelo_text = vangelo_text.replace("Dal Vangelo", "_Dal Vangelo")  # inizio in corsivo
-vangelo_text = re.sub(r'\(([^)]+)\)', r'_ \1 _', vangelo_text)  # corsivo nei riferimenti
-vangelo_text = re.sub(r'«([^»]+)»', r'*\1*', vangelo_text)  # grassetto nelle virgolette
+vangelo_text = re.sub(r'\(([^)]+)\)', r'_\1_', vangelo_text)        # corsivo nei riferimenti
+vangelo_text = re.sub(r'«([^»]+)»', r'*\1*', vangelo_text)           # grassetto nelle virgolette
 
 # Formatting commento
-commento_text = re.sub(r'\(([^)]+)\)', r'_ \1 _', commento_text)
+commento_text = re.sub(r'\(([^)]+)\)', r'_\1_', commento_text)
 commento_text = re.sub(r'«([^»]+)»', r'*\1*', commento_text)
-commento_text = commento_text.replace(". ", ".\n\n")  # spacing
+commento_text = commento_text.replace(". ", ".\n\n")
 
-# Default fallback
-if not vangelo_text:
-    vangelo_text = "⚠️ Vangelo non trovato."
-if not commento_text:
-    commento_text = "⚠️ Commento non trovato."
+# Escape MarkdownV2
+vangelo_text = escape_markdown(vangelo_text)
+commento_text = escape_markdown(commento_text)
+date_escaped = escape_markdown(selected_date_str)
+link_escaped = escape_markdown(entry.link)
 
-# Send messages
+# Bot
 bot = Bot(token=TOKEN)
-bot.send_message(chat_id=CHAT_ID, text=f"📖 **Vangelo del giorno ({selected_date_str})** 🕊️\n\n{vangelo_text}", parse_mode='Markdown')
-bot.send_message(chat_id=CHAT_ID, text=f"📝 **Commento al Vangelo** ✍️\n\n{commento_text}", parse_mode='Markdown')
-
-# Link finale
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 Per leggere dal sito ufficiale: {entry.link}\n\n🌱 Buona giornata e buona meditazione! ✨",
-    parse_mode='Markdown'
+    text=f"📖 *Vangelo del giorno ({date_escaped})* 🕊️\n\n{vangelo_text}",
+    parse_mode=ParseMode.MARKDOWN_V2
+)
+
+bot.send_message(
+    chat_id=CHAT_ID,
+    text=f"📝 *Commento al Vangelo* ✍️\n\n{commento_text}",
+    parse_mode=ParseMode.MARKDOWN_V2
+)
+
+bot.send_message(
+    chat_id=CHAT_ID,
+    text=f"🔗 Per leggere dal sito ufficiale: {link_escaped}\n\n🌱 Buona giornata e buona meditazione! ✨",
+    parse_mode=ParseMode.MARKDOWN_V2
 )
