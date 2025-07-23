@@ -4,20 +4,20 @@ import argparse
 from bs4 import BeautifulSoup
 from telegram import Bot
 from datetime import datetime
-import re
 
 # Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
+# Italian months map
 ITALIAN_MONTHS = {
     1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile",
     5: "maggio", 6: "giugno", 7: "luglio", 8: "agosto",
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
-# Argomenti
+# Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -25,14 +25,14 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()  # UTC!
+    selected_date = datetime.utcnow().date()  # attenzione: UTC!
 
 day = selected_date.day
 month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# Parsing RSS
+# Feed parsing
 feed = feedparser.parse(RSS_URL)
 entry = None
 
@@ -45,7 +45,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Parsing contenuto
+# Estrai contenuto
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -62,22 +62,19 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# --- FORMATTAZIONE ---
+# --- FORMATTAZIONE TESTI ---
 
 def formatta_testo(text):
-    # Corsivo per citazioni (tra virgolette)
+    # Evidenzia citazioni tra virgolette in grassetto
+    import re
     text = re.sub(r'(“[^”]+”)', r'*\1*', text)
     text = re.sub(r'("([^"]+)")', r'*\1*', text)
     text = re.sub(r'(«[^»]+»)', r'*\1*', text)
-
-    # Corsivo per i riferimenti (Gv 1,4)
-    text = re.sub(r'\(([^)]+)\)', r'_(_\1_)_', text)
-
-    # Spaziatura tra paragrafi
+    # Spazi tra paragrafi
     text = re.sub(r'\n+', '\n\n', text.strip())
     return text
 
-# Format Vangelo
+# Format titolo vangelo in corsivo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
     titolo = f"_{vangelo_righe[0].strip()}_"
@@ -87,7 +84,7 @@ if len(vangelo_righe) > 1:
 vangelo_text = formatta_testo(vangelo_text)
 commento_text = formatta_testo(commento_text)
 
-# Invia messaggi
+# Invio messaggi
 bot = Bot(token=TOKEN)
 
 bot.send_message(
@@ -102,9 +99,9 @@ bot.send_message(
     parse_mode='Markdown'
 )
 
-# Link e saluto finale
+# Link di approfondimento
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})\n\n🌱 Buona giornata e buona meditazione! ✨",
+    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})",
     parse_mode='Markdown'
 )
