@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from telegram import Bot
 from datetime import datetime
 import argparse
+import re
 
 # Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
@@ -17,12 +18,24 @@ ITALIAN_MONTHS = {
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
+# Funzione per evidenziare virgolette
+def evidenzia_dialoghi(text):
+    text = re.sub(r'(“[^”]+”)', r'*\1*', text)
+    text = re.sub(r'("([^"]+)")', r'*\1*', text)
+    text = re.sub(r'(«[^»]+»)', r'*\1*', text)
+    return text
+
+# Funzione per inserire spazi tra paragrafi
+def formatta_testo(text):
+    text = re.sub(r'\n+', '\n\n', text)  # Spazio tra paragrafi
+    return text.strip()
+
 # Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
 
-# Date logic
+# Data selezionata
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
@@ -33,7 +46,7 @@ month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# Feed parsing
+# Parse feed
 feed = feedparser.parse(RSS_URL)
 entry = None
 
@@ -46,7 +59,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Estrazione dei testi
+# Parse HTML
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -63,23 +76,11 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# Funzioni di formattazione
-def format_vangelo(text, date_str):
-    lines = text.strip().split("\n")
-    titolo = lines[0] if lines else "Dal Vangelo"
-    corpo = "\n".join(lines[1:-1]).strip()
-    conclusione = lines[-1] if len(lines) > 2 else ""
-    return (
-        f"📖 *Vangelo del giorno — {date_str}*\n\n"
-        f"🕊 *{titolo}*\n\n"
-        f"{corpo}\n\n"
-        f"*{conclusione}*"
-    )
+# Formattazione
+vangelo_text = evidenzia_dialoghi(formatta_testo(vangelo_text)) if vangelo_text else "⚠️ Vangelo non trovato."
+commento_text = evidenzia_dialoghi(formatta_testo(commento_text)) if commento_text else "⚠️ Commento non trovato."
 
-def format_commento(text):
-    return f"📝 *Commento al Vangelo*\n\n{text.strip()}"
-
-# Invio su Telegram
+# Invia i messaggi
 bot = Bot(token=TOKEN)
-bot.send_message(chat_id=CHAT_ID, text=format_vangelo(vangelo_text, selected_date_str), parse_mode='Markdown')
-bot.send_message(chat_id=CHAT_ID, text=format_commento(commento_text), parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=f"📖 *Vangelo del giorno ({selected_date_str})*\n\n{vangelo_text}", parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=f"📝 *Commento al Vangelo*\n\n{commento_text}", parse_mode='Markdown')
