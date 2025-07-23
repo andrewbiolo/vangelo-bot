@@ -11,23 +11,14 @@ RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 
-# Mappa mesi italiani
+# Italian months map
 ITALIAN_MONTHS = {
-    1: "gennaio",
-    2: "febbraio",
-    3: "marzo",
-    4: "aprile",
-    5: "maggio",
-    6: "giugno",
-    7: "luglio",
-    8: "agosto",
-    9: "settembre",
-    10: "ottobre",
-    11: "novembre",
-    12: "dicembre"
+    1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile",
+    5: "maggio", 6: "giugno", 7: "luglio", 8: "agosto",
+    9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
-# Argumenti opzionali
+# Args
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -42,7 +33,7 @@ month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# Feed parsing
+# Parse RSS
 feed = feedparser.parse(RSS_URL)
 entry = None
 
@@ -55,7 +46,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Parsing HTML
+# Parse HTML
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -72,45 +63,30 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# --- FORMATTAZIONE ---
+# Formatting vangelo
+vangelo_text = vangelo_text.replace("Dal Vangelo", "_Dal Vangelo")  # inizio in corsivo
+vangelo_text = re.sub(r'\(([^)]+)\)', r'_ \1 _', vangelo_text)  # corsivo nei riferimenti
+vangelo_text = re.sub(r'«([^»]+)»', r'*\1*', vangelo_text)  # grassetto nelle virgolette
 
-def evidenzia_dialoghi(text):
-    text = re.sub(r'(“[^”]+”)', r'*\1*', text)
-    text = re.sub(r'("([^"]+)")', r'*\1*', text)
-    text = re.sub(r'(«[^»]+»)', r'*\1*', text)
-    return text
+# Formatting commento
+commento_text = re.sub(r'\(([^)]+)\)', r'_ \1 _', commento_text)
+commento_text = re.sub(r'«([^»]+)»', r'*\1*', commento_text)
+commento_text = commento_text.replace(". ", ".\n\n")  # spacing
 
-def corsivo_parentesi(text):
-    return re.sub(r'\(([^)]+)\)', r'_(_\1_)_', text)
+# Default fallback
+if not vangelo_text:
+    vangelo_text = "⚠️ Vangelo non trovato."
+if not commento_text:
+    commento_text = "⚠️ Commento non trovato."
 
-def formatta_paragrafi(text):
-    return re.sub(r'\n{2,}', '\n\n', text.strip())
-
-vangelo_text = evidenzia_dialoghi(vangelo_text)
-vangelo_text = corsivo_parentesi(vangelo_text)
-vangelo_text = formatta_paragrafi(vangelo_text)
-
-commento_text = evidenzia_dialoghi(commento_text)
-commento_text = corsivo_parentesi(commento_text)
-commento_text = formatta_paragrafi(commento_text)
-
-# --- INVIO MESSAGGI TELEGRAM ---
+# Send messages
 bot = Bot(token=TOKEN)
+bot.send_message(chat_id=CHAT_ID, text=f"📖 **Vangelo del giorno ({selected_date_str})** 🕊️\n\n{vangelo_text}", parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=f"📝 **Commento al Vangelo** ✍️\n\n{commento_text}", parse_mode='Markdown')
 
+# Link finale
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 *Vangelo del giorno ({selected_date_str})* 🕊️\n\n_{vangelo_text}_",
-    parse_mode='Markdown'
-)
-
-bot.send_message(
-    chat_id=CHAT_ID,
-    text=f"📝 *Commento al Vangelo* ✍️\n\n{commento_text}",
-    parse_mode='Markdown'
-)
-
-bot.send_message(
-    chat_id=CHAT_ID,
-    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})\n\n🌱 Buona giornata e buona meditazione! ✨",
+    text=f"🔗 Per leggere dal sito ufficiale: {entry.link}\n\n🌱 Buona giornata e buona meditazione! ✨",
     parse_mode='Markdown'
 )
