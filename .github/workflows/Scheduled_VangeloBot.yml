@@ -3,7 +3,7 @@ name: Vangelo Bot
 on:
   workflow_dispatch:
   schedule:
-    - cron: 55 4 * * * 
+    - cron: '15 5 * * *'
 
 jobs:
   test:
