@@ -1,0 +1,85 @@
+import feedparser
+import os
+from bs4 import BeautifulSoup
+from telegram import Bot
+from datetime import datetime
+import argparse
+
+# Config
+RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
+TOKEN = os.getenv("TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+
+# Italian months map
+ITALIAN_MONTHS = {
+    1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile",
+    5: "maggio", 6: "giugno", 7: "luglio", 8: "agosto",
+    9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
+}
+
+# Args
+parser = argparse.ArgumentParser()
+parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
+args = parser.parse_args()
+
+# Date logic
+if args.date:
+    selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
+else:
+    selected_date = datetime.today().date()
+
+day = selected_date.day
+month = ITALIAN_MONTHS[selected_date.month]
+year = selected_date.year
+selected_date_str = f"{day} {month} {year}"
+
+# Feed parsing
+feed = feedparser.parse(RSS_URL)
+entry = None
+
+for e in feed.entries:
+    if f"{day} {month} {year}" in e.title.lower():
+        entry = e
+        break
+
+if not entry:
+    print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
+    exit(1)
+
+# Estrazione dei testi
+soup = BeautifulSoup(entry.description, "html.parser")
+paragraphs = soup.find_all("p", style="text-align: justify;")
+
+vangelo_text = ""
+commento_text = ""
+found_vangelo = False
+
+for idx, p in enumerate(paragraphs):
+    text = p.get_text(separator="\n").strip()
+    if not found_vangelo and text.startswith("Dal Vangelo"):
+        vangelo_text = text
+        if idx + 1 < len(paragraphs):
+            commento_text = paragraphs[idx + 1].get_text(separator="\n").strip()
+        found_vangelo = True
+        break
+
+# Funzioni di formattazione
+def format_vangelo(text, date_str):
+    lines = text.strip().split("\n")
+    titolo = lines[0] if lines else "Dal Vangelo"
+    corpo = "\n".join(lines[1:-1]).strip()
+    conclusione = lines[-1] if len(lines) > 2 else ""
+    return (
+        f"📖 *Vangelo del giorno — {date_str}*\n\n"
+        f"🕊 *{titolo}*\n\n"
+        f"{corpo}\n\n"
+        f"*{conclusione}*"
+    )
+
+def format_commento(text):
+    return f"📝 *Commento al Vangelo*\n\n{text.strip()}"
+
+# Invio su Telegram
+bot = Bot(token=TOKEN)
+bot.send_message(chat_id=CHAT_ID, text=format_vangelo(vangelo_text, selected_date_str), parse_mode='Markdown')
+bot.send_message(chat_id=CHAT_ID, text=format_commento(commento_text), parse_mode='Markdown')
