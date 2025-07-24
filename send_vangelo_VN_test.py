@@ -6,7 +6,7 @@ from telegram import Bot
 from datetime import datetime
 import re
 
-# --- Config ---
+# Config
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -17,7 +17,7 @@ ITALIAN_MONTHS = {
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
-# --- Argomenti ---
+# Argomenti
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -25,16 +25,17 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()  # UTC!
+    selected_date = datetime.utcnow().date()
 
 day = selected_date.day
 month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# --- RSS ---
+# Parsing RSS
 feed = feedparser.parse(RSS_URL)
 entry = None
+
 for e in feed.entries:
     if f"{day} {month} {year}" in e.title.lower():
         entry = e
@@ -44,7 +45,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# --- Parsing contenuto ---
+# Parsing contenuto
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -61,62 +62,61 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# --- Formatters ---
-def formatta_testo_html(text, is_commento=False):
-    if "Gesù disse" in text:
-        text = "📢 " + text
-    if "in verità" in text.lower():
-        text += " ⚠️"
-    if "non temete" in text.lower():
-        text += " 🙌"
-    if "luce" in text.lower():
-        text += " 🌟"
-    if "frutto" in text.lower():
-        text += " 🍇"
-    if is_commento and ("fede" in text.lower() or "chiesa" in text.lower()):
-        text += " ⛪ ✝️"
+# --- FORMATTAZIONE ---
+def formatta_testo(text, is_commento=False):
+    # Citazioni tra «...» in grassetto + emoji
+    text = re.sub(r'«([^»]+)»', r'«<b>\1</b>» ✨🙏🕊️', text)
 
-    # Grassetto per «...»
-    text = re.sub(r'«([^»]+)»', r'<b>\1</b> ✨🙏🕊️', text)
-
-    # Corsivo + grassetto per "..."
+    # Citazioni tra "..." in grassetto e corsivo
     text = re.sub(r'"([^"]+)"', r'<b><i>\1</i></b>', text)
 
-    # Corsivo per (Gv 1,4)
+    # Evidenzia frasi chiave (es. Gesù disse)
+    text = re.sub(r'(Gesù disse)', r'📢 <b>\1</b>', text)
+    text = re.sub(r'(In verità|non temete)', r'⚠️ <b>\1</b>', text, flags=re.IGNORECASE)
+
+    # Termini simbolici
+    text = re.sub(r'\bluce\b', r'🌟 luce', text, flags=re.IGNORECASE)
+    text = re.sub(r'\bfrutto\b', r'🍇 frutto', text, flags=re.IGNORECASE)
+
+    # Commento: simboli legati a fede/chiesa
+    if is_commento:
+        text = re.sub(r'\bChiesa\b', r'⛪ Chiesa', text)
+        text = re.sub(r'\bfede\b', r'✝️ fede', text)
+
+    # Corsivo per riferimenti tipo (Gv 1,4)
     text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
 
-    # Paragrafi separati (solo newline, no <br>)
-    text = re.sub(r'\n+', '\n\n', text.strip())
-
+    # Spaziatura
+    text = re.sub(r'\n+', '<br><br>', text.strip())
     return text
 
-# --- Titolo e corpo del Vangelo separati ---
+# Format Vangelo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
     titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
     vangelo_text = f"{titolo}\n\n{corpo}"
 
-vangelo_text = formatta_testo_html(vangelo_text, is_commento=False)
-commento_text = formatta_testo_html(commento_text, is_commento=True)
+vangelo_text = formatta_testo(vangelo_text)
+commento_text = formatta_testo(commento_text, is_commento=True)
 
-# --- Invio su Telegram ---
+# Invia messaggi
 bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b>\n\n{vangelo_text}",
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b><br><br>{vangelo_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}",
+    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata e buona meditazione! ✨",
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
     parse_mode='HTML'
 )
