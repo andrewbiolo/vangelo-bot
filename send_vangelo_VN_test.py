@@ -81,8 +81,8 @@ def applica_emojis(text):
 def formatta_testo(text):
     text = applica_emojis(text)
 
-    # Citazioni tra virgolette doppie "..." → grassetto e corsivo
-    text = re.sub(r'"([^"]+)"', r'<b><i>\1</i></b>', text)
+    # Citazioni tra virgolette doppie "..." → corsivo
+    text = re.sub(r'"([^"]+)"', r'<i>\1</i>', text)
 
     # Frasi tra «...» → grassetto
     text = re.sub(r'«([^»]+)»', r'<b>«\1»</b>', text)
@@ -97,7 +97,7 @@ def formatta_testo(text):
 # Titolo vangelo in corsivo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
-    titolo = f"<i>{vangelo_righe[0].strip()}</i>"
+    titolo = f"🕊️ <i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
     vangelo_text = f"{titolo}\n\n{corpo}"
 
