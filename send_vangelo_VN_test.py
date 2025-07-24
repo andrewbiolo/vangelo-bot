@@ -65,9 +65,9 @@ for idx, p in enumerate(paragraphs):
 # --- Formattazione ---
 def formatta_html(text):
     # Grassetto per virgolette
-    text = re.sub(r'“([^”]+)”', r'<i>“\1”</i>', text)
-    text = re.sub(r'"([^"]+)"', r'<i>"\1"</i>', text)
-    text = re.sub(r'«([^»]+)»', r'<b>«\1»</b>', text)
+    text = re.sub(r'“([^”]+)”', r'<b>“\1”</b>', text)
+    text = re.sub(r'"([^"]+)"', r'<b>"\1"</b>', text)
+    text = re.sub(r'«([^»]+)»', r'<i>«\1»</i>', text)
 
     # Corsivo per (riferimenti)
     text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
@@ -83,7 +83,7 @@ def formatta_html(text):
 # Formatta titolo vangelo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
-    titolo = f" 🕊️ <i>{vangelo_righe[0].strip()}</i>"
+    titolo = f"🕊️ <i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
     vangelo_text = f"{titolo}\n\n{corpo}"
 
