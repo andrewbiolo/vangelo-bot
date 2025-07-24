@@ -44,7 +44,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# --- Estrazione HTML ---
+# --- Parsing contenuto ---
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -62,8 +62,7 @@ for idx, p in enumerate(paragraphs):
         break
 
 # --- Formatters ---
-def formatta_testo(text, is_commento=False):
-    # Parole chiave -> Emoji
+def formatta_testo_html(text, is_commento=False):
     if "Gesù disse" in text:
         text = "📢 " + text
     if "in verità" in text.lower():
@@ -77,47 +76,47 @@ def formatta_testo(text, is_commento=False):
     if is_commento and ("fede" in text.lower() or "chiesa" in text.lower()):
         text += " ⛪ ✝️"
 
-    # Grassetto per virgolette francesi «...»
-    text = re.sub(r'«([^»]+)»', r'*\1* ✨🙏🕊️', text)
+    # Grassetto per «...»
+    text = re.sub(r'«([^»]+)»', r'<b>\1</b> ✨🙏🕊️', text)
 
-    # Corsivo + grassetto per frasi tra virgolette alte "..."
-    text = re.sub(r'"([^"]+)"', r'***\1***', text)
+    # Corsivo + grassetto per "..."
+    text = re.sub(r'"([^"]+)"', r'<b><i>\1</i></b>', text)
 
-    # Corsivo per riferimenti tra parentesi
-    text = re.sub(r'\(([^)]+)\)', r'_(_\1_)_', text)
+    # Corsivo per (Gv 1,4)
+    text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
 
-    # Spaziatura
-    text = re.sub(r'\n+', '\n\n', text.strip())
+    # Paragrafi separati
+    text = re.sub(r'\n+', '<br><br>', text.strip())
 
     return text
 
 # --- Titolo e corpo del Vangelo separati ---
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
-    titolo = f"_{vangelo_righe[0].strip()}_"
+    titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
-    vangelo_text = f"{titolo}\n\n{corpo}"
+    vangelo_text = f"{titolo}<br><br>{corpo}"
 
-vangelo_text = formatta_testo(vangelo_text, is_commento=False)
-commento_text = formatta_testo(commento_text, is_commento=True)
+vangelo_text = formatta_testo_html(vangelo_text, is_commento=False)
+commento_text = formatta_testo_html(commento_text, is_commento=True)
 
-# --- Invio messaggi Telegram ---
+# --- Invio su Telegram ---
 bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 *Vangelo del giorno ({selected_date_str})*\n\n{vangelo_text}",
-    parse_mode='Markdown'
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b><br><br>{vangelo_text}",
+    parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 *Commento al Vangelo*\n\n{commento_text}",
-    parse_mode='Markdown'
+    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
+    parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})\n\n🌱 Buona giornata e buona meditazione! ✨",
-    parse_mode='Markdown'
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
+    parse_mode='HTML'
 )
