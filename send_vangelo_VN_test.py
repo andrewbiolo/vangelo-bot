@@ -83,7 +83,7 @@ def formatta_html(text):
 # Formatta titolo vangelo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
-    titolo = f"🕊<i>{vangelo_righe[0].strip()}</i>"
+    titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
     vangelo_text = f"{titolo}\n\n{corpo}"
 
