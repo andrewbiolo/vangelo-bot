@@ -17,7 +17,6 @@ ITALIAN_MONTHS = {
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
-# Argomenti
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -25,17 +24,15 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()
+    selected_date = datetime.utcnow().date()  # UTC
 
 day = selected_date.day
 month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# Parsing RSS
 feed = feedparser.parse(RSS_URL)
 entry = None
-
 for e in feed.entries:
     if f"{day} {month} {year}" in e.title.lower():
         entry = e
@@ -45,8 +42,12 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Parsing contenuto
 soup = BeautifulSoup(entry.description, "html.parser")
+
+# Rimuovi <br> (li convertiamo in newline)
+for br in soup.find_all("br"):
+    br.replace_with("\n")
+
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
 vangelo_text = ""
@@ -63,34 +64,37 @@ for idx, p in enumerate(paragraphs):
         break
 
 # --- FORMATTAZIONE ---
-def formatta_testo(text, is_commento=False):
-    # Citazioni tra «...» in grassetto + emoji
-    text = re.sub(r'«([^»]+)»', r'«<b>\1</b>» ✨🙏🕊️', text)
 
-    # Citazioni tra "..." in grassetto e corsivo
-    text = re.sub(r'"([^"]+)"', r'<b><i>\1</i></b>', text)
-
-    # Evidenzia frasi chiave (es. Gesù disse)
-    text = re.sub(r'(Gesù disse)', r'📢 <b>\1</b>', text)
-    text = re.sub(r'(In verità|non temete)', r'⚠️ <b>\1</b>', text, flags=re.IGNORECASE)
-
-    # Termini simbolici
-    text = re.sub(r'\bluce\b', r'🌟 luce', text, flags=re.IGNORECASE)
-    text = re.sub(r'\bfrutto\b', r'🍇 frutto', text, flags=re.IGNORECASE)
-
-    # Commento: simboli legati a fede/chiesa
-    if is_commento:
-        text = re.sub(r'\bChiesa\b', r'⛪ Chiesa', text)
-        text = re.sub(r'\bfede\b', r'✝️ fede', text)
-
-    # Corsivo per riferimenti tipo (Gv 1,4)
-    text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
-
-    # Spaziatura
-    text = re.sub(r'\n+', '<br><br>', text.strip())
+def applica_emojis(text):
+    if "Gesù disse" in text:
+        text = "📢 " + text
+    if "In verità" in text or "non temete" in text:
+        text = "⚠️ " + text
+    if re.search(r"\bluce\b", text, re.IGNORECASE):
+        text += " 🌟"
+    if re.search(r"\bfrutto\b", text, re.IGNORECASE):
+        text += " 🍇"
+    if "Chiesa" in text or "fede" in text:
+        text += " ⛪"
     return text
 
-# Format Vangelo
+def formatta_testo(text):
+    text = applica_emojis(text)
+
+    # Citazioni tra virgolette doppie "..." → grassetto e corsivo
+    text = re.sub(r'"([^"]+)"', r'<b><i>\1</i></b>', text)
+
+    # Frasi tra «...» → grassetto
+    text = re.sub(r'«([^»]+)»', r'<b>«\1»</b>', text)
+
+    # Riferimenti come (Gv 1,4) → corsivo
+    text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
+
+    # Spaziatura paragrafi
+    text = re.sub(r'\n+', '\n\n', text.strip())
+    return text
+
+# Titolo vangelo in corsivo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
     titolo = f"<i>{vangelo_righe[0].strip()}</i>"
@@ -98,25 +102,25 @@ if len(vangelo_righe) > 1:
     vangelo_text = f"{titolo}\n\n{corpo}"
 
 vangelo_text = formatta_testo(vangelo_text)
-commento_text = formatta_testo(commento_text, is_commento=True)
+commento_text = formatta_testo(commento_text)
 
-# Invia messaggi
 bot = Bot(token=TOKEN)
 
+# Invio messaggi
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b><br><br>{vangelo_text}",
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b>\n\n{vangelo_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
+    text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata e buona meditazione! ✨",
     parse_mode='HTML'
 )
