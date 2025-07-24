@@ -85,8 +85,8 @@ def formatta_testo_html(text, is_commento=False):
     # Corsivo per (Gv 1,4)
     text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
 
-    # Paragrafi separati
-    text = re.sub(r'\n+', '<br><br>', text.strip())
+    # Paragrafi separati (solo newline, no <br>)
+    text = re.sub(r'\n+', '\n\n', text.strip())
 
     return text
 
@@ -95,7 +95,7 @@ vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
     titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
-    vangelo_text = f"{titolo}<br><br>{corpo}"
+    vangelo_text = f"{titolo}\n\n{corpo}"
 
 vangelo_text = formatta_testo_html(vangelo_text, is_commento=False)
 commento_text = formatta_testo_html(commento_text, is_commento=True)
@@ -105,18 +105,18 @@ bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b><br><br>{vangelo_text}",
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b>\n\n{vangelo_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
+    text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}",
     parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata e buona meditazione! ✨",
     parse_mode='HTML'
 )
