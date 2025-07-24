@@ -64,47 +64,46 @@ for idx, p in enumerate(paragraphs):
 
 # --- FORMATTAZIONE ---
 
-def formatta_testo(text):
-    # Corsivo per citazioni (tra virgolette)
-    text = re.sub(r'(“[^”]+”)', r'*\1*', text)
-    text = re.sub(r'("([^"]+)")', r'*\1*', text)
-    text = re.sub(r'(«[^»]+»)', r'*\1*', text)
+def formatta_testo_html(text):
+    # Corsivo per citazioni
+    text = re.sub(r'(“[^”]+”)', r'<i>\1</i>', text)
+    text = re.sub(r'("([^"]+)")', r'<i>\1</i>', text)
+    text = re.sub(r'(«[^»]+»)', r'<i>\1</i>', text)
 
-    # Corsivo per i riferimenti (Gv 1,4)
-    text = re.sub(r'\(([^)]+)\)', r'_(_\1_)_', text)
+    # Corsivo per riferimenti tipo (Gv 15,1-8)
+    text = re.sub(r'\(([^)]+)\)', r'(<i>\1</i>)', text)
 
     # Spaziatura tra paragrafi
-    text = re.sub(r'\n+', '\n\n', text.strip())
+    text = re.sub(r'\n+', '<br><br>', text.strip())
     return text
 
 # Format Vangelo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
-    titolo = f"_{vangelo_righe[0].strip()}_"
+    titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
-    vangelo_text = f"{titolo}\n\n{corpo}"
+    vangelo_text = f"{titolo}<br><br>{corpo}"
 
-vangelo_text = formatta_testo(vangelo_text)
-commento_text = formatta_testo(commento_text)
+vangelo_text = formatta_testo_html(vangelo_text)
+commento_text = formatta_testo_html(commento_text)
 
 # Invia messaggi
 bot = Bot(token=TOKEN)
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 *Vangelo del giorno ({selected_date_str})*\n\n{vangelo_text}",
-    parse_mode='Markdown'
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b> 🕊️<br><br>{vangelo_text}",
+    parse_mode='HTML'
 )
 
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 *Commento al Vangelo*\n\n{commento_text}",
-    parse_mode='Markdown'
+    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
+    parse_mode='HTML'
 )
 
-# Link e saluto finale
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 [Leggi sul sito Vatican News]({entry.link})\n\n🌱 Buona giornata e buona meditazione! ✨",
-    parse_mode='Markdown'
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
+    parse_mode='HTML'
 )
