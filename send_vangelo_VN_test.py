@@ -6,7 +6,7 @@ from telegram import Bot
 from datetime import datetime
 import re
 
-# Config
+# --- Config ---
 RSS_URL = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
 TOKEN = os.getenv("TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -17,7 +17,7 @@ ITALIAN_MONTHS = {
     9: "settembre", 10: "ottobre", 11: "novembre", 12: "dicembre"
 }
 
-# Argomenti
+# --- Argomenti ---
 parser = argparse.ArgumentParser()
 parser.add_argument("--date", type=str, help="Data YYYY-MM-DD (default oggi)")
 args = parser.parse_args()
@@ -25,14 +25,14 @@ args = parser.parse_args()
 if args.date:
     selected_date = datetime.strptime(args.date, "%Y-%m-%d").date()
 else:
-    selected_date = datetime.utcnow().date()  # UTC!
+    selected_date = datetime.utcnow().date()  # ⚠️ UTC!
 
 day = selected_date.day
 month = ITALIAN_MONTHS[selected_date.month]
 year = selected_date.year
 selected_date_str = f"{day} {month} {year}"
 
-# Parsing RSS
+# --- Feed parsing ---
 feed = feedparser.parse(RSS_URL)
 entry = None
 
@@ -45,7 +45,7 @@ if not entry:
     print(f"⚠️ Nessun Vangelo trovato per {selected_date_str}")
     exit(1)
 
-# Parsing contenuto
+# --- Parsing HTML ---
 soup = BeautifulSoup(entry.description, "html.parser")
 paragraphs = soup.find_all("p", style="text-align: justify;")
 
@@ -62,48 +62,56 @@ for idx, p in enumerate(paragraphs):
         found_vangelo = True
         break
 
-# --- FORMATTAZIONE ---
+# --- Formattazione ---
+def formatta_html(text):
+    # Grassetto per virgolette
+    text = re.sub(r'“([^”]+)”', r'<b>“\1”</b>', text)
+    text = re.sub(r'"([^"]+)"', r'<b>"\1"</b>', text)
+    text = re.sub(r'«([^»]+)»', r'<b>«\1»</b>', text)
 
-def formatta_testo_html(text):
-    # Corsivo per citazioni
-    text = re.sub(r'(“[^”]+”)', r'<i>\1</i>', text)
-    text = re.sub(r'("([^"]+)")', r'<i>\1</i>', text)
-    text = re.sub(r'(«[^»]+»)', r'<i>\1</i>', text)
+    # Corsivo per (riferimenti)
+    text = re.sub(r'\(([^)]+)\)', r'<i>(\1)</i>', text)
 
-    # Corsivo per riferimenti tipo (Gv 15,1-8)
-    text = re.sub(r'\(([^)]+)\)', r'(<i>\1</i>)', text)
+    # Rimuovi tag HTML per sicurezza
+    text = text.replace("<br>", "").replace("<br/>", "").replace("<br />", "")
 
-    # Spaziatura tra paragrafi
-    text = re.sub(r'\n+', '<br><br>', text.strip())
+    # A capo doppio
+    text = re.sub(r'\n+', '\n\n', text.strip())
+
     return text
 
-# Format Vangelo
+# Formatta titolo vangelo
 vangelo_righe = vangelo_text.split('\n')
 if len(vangelo_righe) > 1:
     titolo = f"<i>{vangelo_righe[0].strip()}</i>"
     corpo = '\n'.join(vangelo_righe[1:]).strip()
-    vangelo_text = f"{titolo}<br><br>{corpo}"
+    vangelo_text = f"{titolo}\n\n{corpo}"
 
-vangelo_text = formatta_testo_html(vangelo_text)
-commento_text = formatta_testo_html(commento_text)
+# Applica formattazione
+vangelo_text = formatta_html(vangelo_text)
+commento_text = formatta_html(commento_text)
 
-# Invia messaggi
+# --- Invia messaggi ---
 bot = Bot(token=TOKEN)
 
+# Messaggio 1: Vangelo
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b> 🕊️<br><br>{vangelo_text}",
+    text=f"📖 <b>Vangelo del giorno ({selected_date_str})</b>\n\n🕊️ {vangelo_text}",
     parse_mode='HTML'
 )
 
+# Messaggio 2: Commento
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"📝 <b>Commento al Vangelo</b><br><br>{commento_text}",
+    text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}",
     parse_mode='HTML'
 )
 
+# Messaggio 3: Link finale
 bot.send_message(
     chat_id=CHAT_ID,
-    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a><br><br>🌱 Buona giornata e buona meditazione! ✨",
-    parse_mode='HTML'
+    text=f"🔗 <a href=\"{entry.link}\">Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata e buona meditazione! ✨",
+    parse_mode='HTML',
+    disable_web_page_preview=True
 )
