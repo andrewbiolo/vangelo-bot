@@ -21,4 +21,4 @@ jobs:
         env:
           TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python debug_pubdate.py 31-07-2025
+        run: python debug_pubdate.py
