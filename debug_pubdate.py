@@ -66,7 +66,7 @@ def estrai_vangelo(data: datetime.date):
         if "Dal Vangelo" in text:
             titolo = text
             corpo = ps[i + 1].get_text(separator="\n").strip() if i + 1 < len(ps) else ""
-            vangelo = f"<i>{titolo}</i>\n\n{corpo}"
+            vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
             commento = ps[i + 2].get_text(separator="\n").strip() if i + 2 < len(ps) else ""
             break
 
