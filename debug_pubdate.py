@@ -60,23 +60,19 @@ def estrai_vangelo(data: datetime.date):
     print(f"🔎 Trovati {len(ps)} paragrafi nel <description>")
 
     vangelo, commento = "", ""
-    for i, p in enumerate(ps):
-        text = p.get_text(separator="\n").strip()
+    for i in range(len(ps)):
+        text = ps[i].get_text(separator="\n").strip()
         print(f"  ▶️ paragrafo {i}: {text[:50]}...")
-        if text.startswith("Dal Vangelo"):
-            vangelo = text
-            if i + 1 < len(ps):
-                commento = ps[i + 1].get_text(separator="\n").strip()
+        if "Dal Vangelo" in text:
+            titolo = text
+            corpo = ps[i + 1].get_text(separator="\n").strip() if i + 1 < len(ps) else ""
+            vangelo = f"<i>{titolo}</i>\n\n{corpo}"
+            commento = ps[i + 2].get_text(separator="\n").strip() if i + 2 < len(ps) else ""
             break
 
     if not vangelo:
-        print("⚠️ Nessun testo che inizia con 'Dal Vangelo' trovato.")
-
-    righe = vangelo.split('\n')
-    if len(righe) > 1:
-        titolo = f"<i>{righe[0].strip()}</i>"
-        corpo = '\n'.join(righe[1:]).strip()
-        vangelo = f"{titolo}\n\n{corpo}"
+        print("⚠️ Nessun testo con 'Dal Vangelo' trovato nel contenuto.")
+        return None, None, None, None
 
     data_str = f"{data.day} {ITALIAN_MONTHS[data.month]} {data.year}"
     return data_str, formatta_html(vangelo), formatta_html(commento), entry.link
