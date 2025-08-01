@@ -7,18 +7,14 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: '3.12'  # Versione sicura!
+          python-version: '3.11'
 
-      - name: Aggiorna pip
-        run: pip install --upgrade pip
-
-      - name: Installa dipendenze
+      - name: Install dependencies
         run: pip install -r requirements.txt
 
       - name: Esegui script
