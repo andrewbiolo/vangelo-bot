@@ -66,23 +66,27 @@ def estrai_vangelo(data: datetime.date):
 
         if "Dal Vangelo" in text:
             print("📌 Trovato paragrafo con 'Dal Vangelo'")
-            paragrafi_restanti = ps[i+1:i+4]
+            paragrafi_dal_vangelo = ps[i:i+3]  # massimo 3 paragrafi: titolo, corpo, commento
 
-            if len(paragrafi_restanti) >= 2:
-                titolo = text
-                corpo = paragrafi_restanti[0].get_text(separator="\n").strip()
-                commento = paragrafi_restanti[1].get_text(separator="\n").strip()
+            if len(paragrafi_dal_vangelo) == 3:
+                titolo = paragrafi_dal_vangelo[0].get_text(separator="\n").strip()
+                corpo = paragrafi_dal_vangelo[1].get_text(separator="\n").strip()
+                commento = paragrafi_dal_vangelo[2].get_text(separator="\n").strip()
                 vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
-                print("📌 Struttura a 3 paragrafi: titolo, corpo, commento.")
-            elif len(paragrafi_restanti) == 1:
-                corpo_e_titolo = text
-                commento = paragrafi_restanti[0].get_text(separator="\n").strip()
-                vangelo = f"<i>{corpo_e_titolo}</i>"
-                print("📌 Struttura a 2 paragrafi: titolo+corpo, commento.")
-            else:
-                vangelo = f"<i>{text}</i>"
+                print("📌 Struttura: titolo + corpo + commento")
+            elif len(paragrafi_dal_vangelo) == 2:
+                titolo_e_corpo = paragrafi_dal_vangelo[0].get_text(separator="\n").strip()
+                commento = paragrafi_dal_vangelo[1].get_text(separator="\n").strip()
+                vangelo = f"<i>{titolo_e_corpo}</i>".strip()
+                print("📌 Struttura: titolo+corpo uniti, commento separato")
+            elif len(paragrafi_dal_vangelo) == 1:
+                titolo_e_corpo = paragrafi_dal_vangelo[0].get_text(separator="\n").strip()
+                vangelo = f"<i>{titolo_e_corpo}</i>".strip()
                 commento = ""
-                print("⚠️ Nessun commento disponibile.")
+                print("📌 Struttura: solo titolo+corpo uniti")
+            else:
+                vangelo = commento = ""
+                print("❌ Nessun contenuto Vangelo rilevato")
             break
 
     if not vangelo:
