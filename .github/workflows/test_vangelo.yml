@@ -25,4 +25,4 @@ jobs:
         env:
           TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
-        run: python send_vangelo_VN_test.py --date 2025-07-20
+        run: python debug_pubdate.py
