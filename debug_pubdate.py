@@ -1,5 +1,4 @@
 import os
-import re
 import sys
 import asyncio
 import feedparser
@@ -7,6 +6,7 @@ from telegram import Bot
 from datetime import datetime
 from bs4 import BeautifulSoup
 from email.utils import parsedate_to_datetime
+import re
 
 ITALIAN_MONTHS = {
     1: "gennaio", 2: "febbraio", 3: "marzo", 4: "aprile",
@@ -56,18 +56,26 @@ def estrai_vangelo(data: datetime.date):
         return None, None, None, None
 
     soup = BeautifulSoup(entry.description, "html.parser")
-    ps = soup.find_all("p")  # ✅ aggiornata per prendere tutti i paragrafi
+    ps = soup.find_all("p")
     print(f"🔎 Trovati {len(ps)} paragrafi nel <description>")
 
     vangelo, commento = "", ""
     for i in range(len(ps)):
         text = ps[i].get_text(separator="\n").strip()
-        print(f"  ▶️ paragrafo {i}: {text[:50]}...")
+        print(f"  ▶️ paragrafo {i}: {text[:80]}...")
+
         if "Dal Vangelo" in text:
+            print("📌 Trovato titolo del Vangelo")
             titolo = text
             corpo = ps[i + 1].get_text(separator="\n").strip() if i + 1 < len(ps) else ""
             vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
-            commento = ps[i + 2].get_text(separator="\n").strip() if i + 2 < len(ps) else ""
+
+            if i + 2 < len(ps):
+                commento = ps[i + 2].get_text(separator="\n").strip()
+                print("📌 Commento trovato:")
+                print(commento[:200])
+            else:
+                print("⚠️ Nessun commento disponibile (i+2 out of range)")
             break
 
     if not vangelo:
@@ -94,11 +102,22 @@ async def invia_vangelo_oggi(chat_id: str, token: str, date_str: str = None):
         raise ValueError(f"Nessun Vangelo trovato per la data {data.strftime('%d-%m-%Y')}.")
 
     bot = Bot(token=token)
-    await bot.send_message(chat_id=chat_id, text=f"📖 <b>Vangelo del giorno ({data_str})</b>\n\n🕊️ {vangelo_text}", parse_mode='HTML')
-    await bot.send_message(chat_id=chat_id, text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}", parse_mode='HTML')
-    await bot.send_message(chat_id=chat_id, text=f"🔗 <a href='{link}'>Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata!", parse_mode='HTML', disable_web_page_preview=True)
 
-# --- Esecuzione diretta da terminale ---
+    await bot.send_message(chat_id=chat_id,
+                           text=f"📖 <b>Vangelo del giorno ({data_str})</b>\n\n🕊️ {vangelo_text}",
+                           parse_mode='HTML')
+
+    if commento_text:
+        await bot.send_message(chat_id=chat_id,
+                               text=f"📝 <b>Commento al Vangelo</b>\n\n{commento_text}",
+                               parse_mode='HTML')
+
+    await bot.send_message(chat_id=chat_id,
+                           text=f"🔗 <a href='{link}'>Leggi sul sito Vatican News</a>\n\n🌱 Buona giornata!",
+                           parse_mode='HTML',
+                           disable_web_page_preview=True)
+
+# --- Esecuzione da terminale ---
 if __name__ == "__main__":
     token = os.getenv("TOKEN")
     chat_id = os.getenv("CHAT_ID")
