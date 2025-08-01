@@ -2,16 +2,17 @@ import feedparser
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 
-# Carica il feed dal file XML
-feed = feedparser.parse("vangeldelgiorno.xml")
+# Carica il feed RSS online
+url = "https://www.vaticannews.va/it/vangelo-del-giorno-e-parola-del-giorno.rss.xml"
+feed = feedparser.parse(url)
 
-# Data target da confrontare (modifica se vuoi testare altre date)
+# Data da cercare
 data_target = datetime.strptime("2025-08-01", "%Y-%m-%d").date()
 
 print(f"🔍 DATA TARGET: {data_target}")
 print("=" * 50)
 
-# Loop su tutte le entry del feed
+# Loop di debug sulle entry
 for e in feed.entries:
     try:
         pub_raw = e.published
