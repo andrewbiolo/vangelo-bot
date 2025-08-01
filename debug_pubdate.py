@@ -56,7 +56,7 @@ def estrai_vangelo(data: datetime.date):
         return None, None, None, None
 
     soup = BeautifulSoup(entry.description, "html.parser")
-    ps = soup.find_all("p", style="text-align: justify;")
+    ps = soup.find_all("p")
     print(f"🔎 Trovati {len(ps)} paragrafi nel <description>")
 
     vangelo, commento = "", ""
@@ -65,19 +65,24 @@ def estrai_vangelo(data: datetime.date):
         print(f"  ▶️ paragrafo {i}: {text[:80]}...")
 
         if "Dal Vangelo" in text:
-            print("📌 Trovato titolo del Vangelo")
-            titolo = text
+            print("📌 Trovato paragrafo con 'Dal Vangelo'")
+            paragrafi_restanti = ps[i+1:i+4]
 
-            corpo = ps[i + 1].get_text(separator="\n").strip() if i + 1 < len(ps) else ""
-            vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
-
-            if i + 2 < len(ps):
-                commento = ps[i + 2].get_text(separator="\n").strip()
-                print("📌 Commento separato trovato.")
+            if len(paragrafi_restanti) >= 2:
+                titolo = text
+                corpo = paragrafi_restanti[0].get_text(separator="\n").strip()
+                commento = paragrafi_restanti[1].get_text(separator="\n").strip()
+                vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
+                print("📌 Struttura a 3 paragrafi: titolo, corpo, commento.")
+            elif len(paragrafi_restanti) == 1:
+                corpo_e_titolo = text
+                commento = paragrafi_restanti[0].get_text(separator="\n").strip()
+                vangelo = f"<i>{corpo_e_titolo}</i>"
+                print("📌 Struttura a 2 paragrafi: titolo+corpo, commento.")
             else:
+                vangelo = f"<i>{text}</i>"
                 commento = ""
-                print("⚠️ Nessun commento disponibile come <p> successivo.")
-
+                print("⚠️ Nessun commento disponibile.")
             break
 
     if not vangelo:
