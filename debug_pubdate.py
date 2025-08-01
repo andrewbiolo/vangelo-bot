@@ -56,7 +56,7 @@ def estrai_vangelo(data: datetime.date):
         return None, None, None, None
 
     soup = BeautifulSoup(entry.description, "html.parser")
-    ps = soup.find_all("p", style="text-align: justify;")
+    ps = soup.find_all("p")  # ✅ aggiornata per prendere tutti i paragrafi
     print(f"🔎 Trovati {len(ps)} paragrafi nel <description>")
 
     vangelo, commento = "", ""
