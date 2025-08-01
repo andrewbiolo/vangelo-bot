@@ -67,15 +67,17 @@ def estrai_vangelo(data: datetime.date):
         if "Dal Vangelo" in text:
             print("📌 Trovato titolo del Vangelo")
             titolo = text
+
             corpo = ps[i + 1].get_text(separator="\n").strip() if i + 1 < len(ps) else ""
             vangelo = f"<i>{titolo}</i>\n\n{corpo}".strip()
 
             if i + 2 < len(ps):
                 commento = ps[i + 2].get_text(separator="\n").strip()
-                print("📌 Commento trovato:")
-                print(commento[:200])
+                print("📌 Commento separato trovato.")
             else:
-                print("⚠️ Nessun commento disponibile (i+2 out of range)")
+                commento = ""
+                print("⚠️ Nessun commento disponibile come <p> successivo.")
+
             break
 
     if not vangelo:
